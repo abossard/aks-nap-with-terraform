@@ -7,22 +7,40 @@ variable "location" {
 variable "resource_group_name" {
   description = "Name of the resource group"
   type        = string
-default     = ""    
 }
 
 variable "project_name" {
   description = "Project name"
   type        = string
+  default     = "aks-nap"
 }
 
-variable "enable_local_accounts" {
-  description = "Enable local accounts on AKS (set true for testing, false for production)"
-  type        = bool
-  default     = false
-}
-
-variable "auto_calculated_salt" {
-  description = "Auto-calculated SALT value"
+variable "environment" {
+  description = "Environment tag (e.g. production, staging)"
   type        = string
-  default     = ""
+  default     = "production"
+}
+
+variable "kubernetes_version" {
+  description = "Kubernetes version (minor alias e.g. 1.31)"
+  type        = string
+  default     = "1.33"
+}
+
+variable "aks_admin_group_ids" {
+  description = "Azure AD group Object IDs for AKS cluster admin role"
+  type        = list(string)
+  default     = []
+}
+
+variable "system_node_vm_size" {
+  description = "VM size for the system node pool"
+  type        = string
+  default     = "Standard_D4ds_v5"
+}
+
+variable "system_node_count" {
+  description = "Number of nodes in the system node pool"
+  type        = number
+  default     = 2
 }

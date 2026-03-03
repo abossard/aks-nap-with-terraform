@@ -31,7 +31,7 @@ No `azapi` provider needed — `node_provisioning_profile` is natively supported
 | `location` | `var.location` | From `terraform.tfvars` (`WestEurope`) |
 | `resource_group_name` | `azurerm_resource_group.main.name` | Managed by Terraform |
 | `dns_prefix` | `var.project_name` | e.g. `aks-nap` |
-| `kubernetes_version` | `"1.31"` | Latest stable; NAP requires >= 1.26 |
+| `kubernetes_version` | `"1.33"` | Latest stable; NAP requires >= 1.26 |
 | `sku_tier` | `"Standard"` | SLA-backed uptime; required for `cost_analysis_enabled` |
 | `cost_analysis_enabled` | `true` | Visibility in Azure portal |
 | `local_account_disabled` | `true` | Security: force Azure AD auth only |
@@ -326,7 +326,7 @@ tags = {
 | `location` | `string` | `"WestEurope"` | Azure region |
 | `resource_group_name` | `string` | `""` | RG name (auto-generated if empty) |
 | `environment` | `string` | `"production"` | Environment tag |
-| `kubernetes_version` | `string` | `"1.31"` | K8s version |
+| `kubernetes_version` | `string` | `"1.33"` | K8s version |
 | `aks_admin_group_ids` | `list(string)` | `[]` | Azure AD group Object IDs for cluster admin |
 | `system_node_vm_size` | `string` | `"Standard_D4ds_v5"` | System pool VM SKU |
 | `system_node_count` | `number` | `2` | System pool node count |
