@@ -22,6 +22,17 @@ resource "azurerm_kubernetes_cluster" "main" {
   node_os_upgrade_channel           = "NodeImage"
   automatic_upgrade_channel         = "patch"
 
+  private_cluster_enabled             = var.private_cluster_enabled
+  private_cluster_public_fqdn_enabled = var.private_cluster_public_fqdn_enabled
+
+  dynamic "api_server_access_profile" {
+    for_each = var.api_server_vnet_integration_enabled ? [1] : []
+    content {
+      virtual_network_integration_enabled = true
+      subnet_id                = var.api_server_subnet_id
+    }
+  }
+
   node_provisioning_profile {
     mode               = "Auto"
     default_node_pools = "Auto"
@@ -60,8 +71,20 @@ resource "azurerm_kubernetes_cluster" "main" {
       idle_timeout_in_minutes   = 30
     }
 
-    advanced_networking {
-      observability_enabled = true
+    dynamic "advanced_networking" {
+      for_each = var.enable_acns_observability ? [1] : []
+      content {
+        observability_enabled = true
+        security_enabled      = true
+      }
+    }
+  }
+
+  dynamic "monitor_metrics" {
+    for_each = var.enable_managed_prometheus ? [1] : []
+    content {
+      annotations_allowed = null
+      labels_allowed      = null
     }
   }
 

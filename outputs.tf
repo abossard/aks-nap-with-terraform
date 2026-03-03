@@ -70,3 +70,23 @@ output "current_kubernetes_version" {
   description = "The actual Kubernetes version running on the cluster"
   value       = azurerm_kubernetes_cluster.main.current_kubernetes_version
 }
+
+output "monitor_workspace_id" {
+  description = "Azure Monitor Workspace ID for Prometheus (null if disabled)"
+  value       = var.enable_managed_prometheus ? azurerm_monitor_workspace.prometheus[0].id : null
+}
+
+output "grafana_endpoint" {
+  description = "Azure Managed Grafana endpoint URL (null if disabled)"
+  value       = var.enable_managed_grafana ? azurerm_dashboard_grafana.main[0].endpoint : null
+}
+
+output "prometheus_rule_group_id" {
+  description = "Prometheus CPU imbalance alert rule group ID (null if disabled)"
+  value       = var.enable_managed_prometheus ? azurerm_monitor_alert_prometheus_rule_group.cpu_imbalance[0].id : null
+}
+
+output "acns_observability_enabled" {
+  description = "Whether ACNS (Hubble) observability is enabled"
+  value       = var.enable_acns_observability
+}
