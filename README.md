@@ -143,7 +143,7 @@ kubectl get nodes
 
 ### Design Decisions
 
-1. **Pure `azurerm` provider** — no `azapi` or CLI workarounds. All resources use the stable AzureRM v4.62 API.
+1. **Pure `azurerm` provider** — no `azapi` or CLI workarounds. All resources use the stable [AzureRM v4.62](https://github.com/hashicorp/terraform-provider-azurerm/releases) API.
 
 2. **Conditional resources via `count`** — every monitoring resource uses `count = var.enable_* ? 1 : 0` so features can be toggled without touching code.
 
@@ -153,23 +153,23 @@ kubectl get nodes
 
 Enabling `enable_managed_prometheus` creates this data pipeline:
 
-```
-AKS (monitor_metrics addon)
-  → Data Collection Rule (prometheus_forwarder)
-    → Data Collection Endpoint
-      → Azure Monitor Workspace
-        → Prometheus Alert Rule Groups
+```mermaid
+flowchart TD
+    A["AKS Cluster<br/><code>monitor_metrics {}</code>"] --> B["Data Collection Rule<br/><code>prometheus_forwarder</code>"]
+    B --> C["Data Collection Endpoint"]
+    C --> D["Azure Monitor Workspace<br/><i>18-month retention</i>"]
+    D --> E["Prometheus Alert Rule Groups<br/><i>NodeCPUImbalance</i>"]
 ```
 
 **Resources created:**
 
-| Resource | Type | Purpose |
-|----------|------|---------|
-| `azurerm_monitor_workspace` | Storage | Prometheus metrics store (18-month retention) |
-| `azurerm_monitor_data_collection_endpoint` | Ingestion | Metrics ingestion endpoint |
-| `azurerm_monitor_data_collection_rule` | Pipeline | Forwards `Microsoft-PrometheusMetrics` stream |
-| `azurerm_monitor_data_collection_rule_association` | Binding | Links DCR → AKS cluster |
-| `azurerm_monitor_alert_prometheus_rule_group` | Alerting | CPU imbalance detection |
+| Resource | Terraform Type | Purpose | Docs |
+|----------|---------------|---------|------|
+| Monitor Workspace | [`azurerm_monitor_workspace`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_workspace) | Prometheus metrics store (18-month retention) | [Overview](https://learn.microsoft.com/azure/azure-monitor/metrics/prometheus-metrics-overview) |
+| Data Collection Endpoint | [`azurerm_monitor_data_collection_endpoint`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_data_collection_endpoint) | Metrics ingestion endpoint | [DCE docs](https://learn.microsoft.com/azure/azure-monitor/essentials/data-collection-endpoint-overview) |
+| Data Collection Rule | [`azurerm_monitor_data_collection_rule`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_data_collection_rule) | Forwards `Microsoft-PrometheusMetrics` stream | [DCR docs](https://learn.microsoft.com/azure/azure-monitor/essentials/data-collection-rule-overview) |
+| DCR Association | [`azurerm_monitor_data_collection_rule_association`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_data_collection_rule_association) | Links DCR → AKS cluster | [Association docs](https://learn.microsoft.com/azure/azure-monitor/essentials/data-collection-rule-overview#associations) |
+| Alert Rule Group | [`azurerm_monitor_alert_prometheus_rule_group`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_alert_prometheus_rule_group) | CPU imbalance detection | [Prometheus rules](https://learn.microsoft.com/azure/azure-monitor/metrics/prometheus-rule-groups) |
 
 ### CPU Imbalance Alert
 
@@ -191,9 +191,11 @@ The `NodeCPUImbalance` alert fires when any node's average CPU usage over 5 minu
 | Must fire for | 5 minutes (`PT5M`) |
 | Severity | 3 (warning) |
 
+> **How it works:** The left side computes per-node CPU utilization (1 − idle rate). The right side computes the cluster-wide mean and multiplies by 1.2 (120%). If any single node exceeds the inflated average for 5 consecutive minutes, the alert fires. See [PromQL documentation](https://prometheus.io/docs/prometheus/latest/querying/basics/) for syntax reference.
+
 ### ACNS Observability (Hubble)
 
-When `enable_acns_observability = true`, the AKS `network_profile` includes:
+When `enable_acns_observability = true`, the AKS [`network_profile`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster#network_profile) includes:
 
 ```hcl
 advanced_networking {
@@ -205,33 +207,85 @@ advanced_networking {
 **Requires:** `network_data_plane = "cilium"` and `network_policy = "cilium"` (both already configured).
 
 **What you get:**
-- Pod-to-pod L3/L4 flow visibility via Hubble
-- DNS resolution metrics and error tracking
-- Dropped connection analysis
-- FQDN-based egress filtering
+
+| Capability | Description | Docs |
+|-----------|-------------|------|
+| Hubble Flow Logs | Pod-to-pod L3/L4 flow visibility via eBPF | [ACNS overview](https://learn.microsoft.com/azure/aks/advanced-container-networking-services-overview) |
+| DNS Metrics | DNS resolution statistics and error tracking | [Enable ACNS](https://learn.microsoft.com/azure/aks/use-advanced-container-networking-services) |
+| Drop Analysis | Dropped connection tracking and debugging | [Container Network Logs](https://learn.microsoft.com/azure/aks/how-to-configure-container-network-logs) |
+| FQDN Filtering | Domain-based egress network policies | [FQDN filtering](https://learn.microsoft.com/azure/aks/fqdn-based-policy) |
+
+> **Note:** Starting November 2025, Azure renamed `RetinaNetworkFlowLogs` to `ContainerNetworkLog`. See the [migration guide](https://learn.microsoft.com/azure/aks/how-to-configure-container-network-logs).
 
 ### Optional: Managed Grafana
 
-Set `enable_managed_grafana = true` to deploy Azure Managed Grafana (v11) with:
-- Automatic Monitor Workspace integration
-- `Monitoring Reader` and `Monitoring Data Reader` role assignments
-- Pre-built dashboards for Prometheus metrics and ACNS flow logs
+Set `enable_managed_grafana = true` to deploy [Azure Managed Grafana](https://learn.microsoft.com/azure/managed-grafana/overview) (v11) with:
+- Automatic [Monitor Workspace integration](https://learn.microsoft.com/azure/managed-grafana/how-to-connect-azure-monitor-workspace)
+- `Monitoring Reader` and `Monitoring Data Reader` [role assignments](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#monitoring-reader)
+- Pre-built dashboards for Prometheus metrics and [ACNS flow logs](https://grafana.com/grafana/dashboards/23155-azure-insights-containers-networking-flow-logs/)
 
 ## AKS Cluster Features
 
 The cluster is configured with production-grade defaults:
 
-| Feature | Configuration |
-|---------|--------------|
-| Node Auto-Provisioning | `mode = "Auto"` — AKS manages node scaling |
-| CNI | Azure CNI Overlay with Cilium data plane |
-| Network Policy | Cilium (eBPF-based) |
-| OS | AzureLinux across all node pools |
-| Upgrades | Patch auto-upgrade, weekly Sunday maintenance windows |
-| Security | Azure RBAC, Workload Identity, OIDC issuer, Azure Policy |
-| Storage | All CSI drivers enabled (blob, disk, file, snapshots) |
-| Secrets | Key Vault CSI with 2-minute rotation |
-| Image Hygiene | Image cleaner every 48 hours |
+```mermaid
+graph LR
+    subgraph Compute
+        NAP["Node Auto-Provisioning<br/><i>mode: Auto</i>"]
+        SYS["System Pool<br/><i>AzureLinux, 3 AZs</i>"]
+    end
+    subgraph Networking
+        CIL["Azure CNI Overlay<br/><i>Cilium data plane</i>"]
+        POL["Cilium Network Policy<br/><i>eBPF-based</i>"]
+        WAR["Web App Routing"]
+    end
+    subgraph Security
+        RBAC["Azure AD RBAC"]
+        WI["Workload Identity + OIDC"]
+        KV["Key Vault CSI<br/><i>2-min rotation</i>"]
+        APOL["Azure Policy"]
+    end
+    subgraph Operations
+        UPG["Patch Auto-Upgrade"]
+        MW["Maintenance Windows<br/><i>Sunday 02:00</i>"]
+        IMG["Image Cleaner<br/><i>every 48h</i>"]
+    end
+```
+
+| Feature | Configuration | Docs |
+|---------|--------------|------|
+| Node Auto-Provisioning | `mode = "Auto"` — AKS manages node scaling | [NAP docs](https://learn.microsoft.com/azure/aks/node-autoprovision) |
+| CNI | Azure CNI Overlay with Cilium data plane | [Azure CNI Overlay](https://learn.microsoft.com/azure/aks/azure-cni-overlay) |
+| Network Policy | Cilium (eBPF-based) | [Cilium on AKS](https://learn.microsoft.com/azure/aks/azure-cni-powered-by-cilium) |
+| OS | AzureLinux across all node pools | [AzureLinux](https://learn.microsoft.com/azure/aks/use-azure-linux) |
+| Upgrades | Patch auto-upgrade, weekly Sunday maintenance windows | [Auto-upgrade](https://learn.microsoft.com/azure/aks/auto-upgrade-cluster) |
+| Security | Azure RBAC, Workload Identity, OIDC issuer, Azure Policy | [AKS security](https://learn.microsoft.com/azure/aks/concepts-security) |
+| Storage | All CSI drivers enabled (blob, disk, file, snapshots) | [CSI drivers](https://learn.microsoft.com/azure/aks/csi-storage-drivers) |
+| Secrets | Key Vault CSI with 2-minute rotation | [Key Vault CSI](https://learn.microsoft.com/azure/aks/csi-secrets-store-driver) |
+| Image Hygiene | Image cleaner every 48 hours | [Image Cleaner](https://learn.microsoft.com/azure/aks/image-cleaner) |
+| Web App Routing | Managed NGINX ingress controller | [Web App Routing](https://learn.microsoft.com/azure/aks/app-routing) |
+| Workload Identity | OIDC federation for pod-level Azure auth | [Workload Identity](https://learn.microsoft.com/azure/aks/workload-identity-overview) |
+| Cost Analysis | Namespace/deployment cost breakdown in Azure Portal | [Cost Analysis](https://learn.microsoft.com/azure/aks/cost-analysis) |
+
+## Input Variables
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `location` | `string` | `"WestEurope"` | Azure region for all resources |
+| `resource_group_name` | `string` | — (required) | Name of the resource group |
+| `project_name` | `string` | `"aks-nap"` | Prefix for all resource names |
+| `environment` | `string` | `"production"` | Environment tag |
+| `kubernetes_version` | `string` | `"1.33"` | Kubernetes minor version alias |
+| `aks_admin_group_ids` | `list(string)` | `[]` | Azure AD group IDs for cluster admin role |
+| `system_node_vm_size` | `string` | `"Standard_D4ds_v5"` | VM size for system node pool |
+| `system_node_count` | `number` | `2` | System node pool count |
+| `private_cluster_enabled` | `bool` | `false` | Enable private API server |
+| `private_cluster_public_fqdn_enabled` | `bool` | `false` | Enable public FQDN for private cluster |
+| `api_server_vnet_integration_enabled` | `bool` | `false` | Enable API server VNet integration |
+| `api_server_subnet_id` | `string` | `null` | Subnet ID for VNet integration |
+| `enable_managed_prometheus` | `bool` | `true` | Enable full Prometheus monitoring stack |
+| `enable_managed_grafana` | `bool` | `false` | Enable Azure Managed Grafana |
+| `enable_acns_observability` | `bool` | `true` | Enable ACNS Hubble + network security |
 
 ## Outputs
 
@@ -251,6 +305,32 @@ The cluster is configured with production-grade defaults:
 ```bash
 terraform destroy
 ```
+
+## References
+
+### Terraform Resources
+- [`azurerm_kubernetes_cluster`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster) — AKS cluster with all addons
+- [`azurerm_monitor_workspace`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_workspace) — Azure Monitor Workspace for Prometheus
+- [`azurerm_monitor_data_collection_rule`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_data_collection_rule) — DCR for metrics pipeline
+- [`azurerm_monitor_alert_prometheus_rule_group`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_alert_prometheus_rule_group) — Prometheus alert rules
+- [`azurerm_dashboard_grafana`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dashboard_grafana) — Azure Managed Grafana
+
+### Azure Documentation
+- [Azure Managed Prometheus Overview](https://learn.microsoft.com/azure/azure-monitor/metrics/prometheus-metrics-overview)
+- [Enable Monitoring for AKS](https://learn.microsoft.com/azure/azure-monitor/containers/kubernetes-monitoring-enable)
+- [Prometheus Rule Groups](https://learn.microsoft.com/azure/azure-monitor/metrics/prometheus-rule-groups)
+- [ACNS Overview](https://learn.microsoft.com/azure/aks/advanced-container-networking-services-overview)
+- [Enable ACNS on AKS](https://learn.microsoft.com/azure/aks/use-advanced-container-networking-services)
+- [Container Network Logs (Hubble)](https://learn.microsoft.com/azure/aks/how-to-configure-container-network-logs)
+- [Azure CNI Powered by Cilium](https://learn.microsoft.com/azure/aks/azure-cni-powered-by-cilium)
+- [Node Auto-Provisioning](https://learn.microsoft.com/azure/aks/node-autoprovision)
+- [AKS Workload Identity](https://learn.microsoft.com/azure/aks/workload-identity-overview)
+- [Azure Managed Grafana](https://learn.microsoft.com/azure/managed-grafana/overview)
+
+### Community
+- [ACNS Lab Walkthrough](https://azure-samples.github.io/aks-labs/docs/networking/acns-lab/)
+- [Grafana Dashboard: ACNS Flow Logs](https://grafana.com/grafana/dashboards/23155-azure-insights-containers-networking-flow-logs/)
+- [PromQL Cheat Sheet](https://promlabs.com/promql-cheat-sheet/)
 
 ## Useful Commands
 
