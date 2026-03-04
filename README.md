@@ -66,11 +66,14 @@ graph LR
     G["enable_managed_grafana<br/><b>default: false</b>"] --> GR[Managed Grafana]
     G --> RA[Role Assignments]
 
+    R["enable_app_routing<br/><b>default: true</b>"] --> WAR[Web App Routing]
+
     O["enable_acns_observability<br/><b>default: true</b>"] --> HB[Hubble Observability]
     O --> NS[Network Security]
 
     style P fill:#c8e6c9,stroke:#388e3c
     style G fill:#fff9c4,stroke:#f9a825
+    style R fill:#f3e5f5,stroke:#8e24aa
     style O fill:#bbdefb,stroke:#1976d2
 ```
 
@@ -78,6 +81,7 @@ graph LR
 |----------|---------|-----------------|
 | `enable_managed_prometheus` | `true` | Monitor Workspace, DCR/DCE pipeline, `monitor_metrics` block on AKS, Prometheus alert rules |
 | `enable_managed_grafana` | `false` | Azure Managed Grafana instance + RBAC role assignments (requires Prometheus) |
+| `enable_app_routing` | `true` | Web App Routing add-on (managed NGINX ingress controller) |
 | `enable_acns_observability` | `true` | ACNS `advanced_networking` block: Hubble flow logs + network security (FQDN policies) |
 
 ## Prerequisites
@@ -118,6 +122,7 @@ resource_group_name       = "rg-aks-nap"
 location                  = "swedencentral"
 enable_managed_prometheus = true   # Monitor Workspace + alerts
 enable_managed_grafana    = false  # Set true for Azure Managed Grafana
+enable_app_routing        = true   # Web App Routing (managed NGINX)
 enable_acns_observability = true   # Hubble + network security
 ```
 
@@ -285,6 +290,7 @@ graph LR
 | `api_server_subnet_id` | `string` | `null` | Subnet ID for VNet integration |
 | `enable_managed_prometheus` | `bool` | `true` | Enable full Prometheus monitoring stack |
 | `enable_managed_grafana` | `bool` | `false` | Enable Azure Managed Grafana |
+| `enable_app_routing` | `bool` | `true` | Enable Web App Routing add-on (managed NGINX) |
 | `enable_acns_observability` | `bool` | `true` | Enable ACNS Hubble + network security |
 
 ## Outputs
@@ -341,3 +347,25 @@ terraform destroy
 | `terraform destroy` | Delete all managed resources |
 | `terraform output` | Display output values |
 | `terraform state list` | List resources in state |
+
+## Using GitHub Copilot
+
+This repo includes a [`.github/copilot-instructions.md`](.github/copilot-instructions.md) file that gives GitHub Copilot context about the project's conventions, architecture, and patterns. This means Copilot (in VS Code, CLI, or GitHub.com) automatically understands the codebase when you ask questions or request changes.
+
+### What you can ask Copilot
+
+| Task | Example prompt |
+|------|---------------|
+| Add a new feature toggle | *"Add a variable to enable/disable KEDA on the cluster"* |
+| Understand the architecture | *"How does the Prometheus monitoring pipeline work?"* |
+| Modify cluster settings | *"Change the maintenance window to Saturday 03:00"* |
+| Add monitoring resources | *"Add a Prometheus alert for pod restart rate"* |
+| Review configuration | *"Are there any security best practices missing?"* |
+| Extend outputs | *"Add an output for the kubelet identity client ID"* |
+
+### Tips
+
+- **Copilot CLI** (`gh copilot`): Ask questions directly in your terminal — e.g., `gh copilot explain "what does node_provisioning_profile do?"`
+- **Copilot in VS Code**: Open any `.tf` file and use inline chat (`Ctrl+I` / `Cmd+I`) for targeted edits
+- **Copilot on GitHub.com**: Use Copilot in pull request reviews to validate Terraform changes
+- The copilot instructions file ensures consistent conventions (naming, tagging, feature toggle patterns) across all AI-assisted edits
