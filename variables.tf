@@ -81,6 +81,12 @@ variable "enable_managed_grafana" {
   default     = false
 }
 
+variable "enable_app_routing" {
+  description = "Enable the web app routing (app routing addon) on the AKS cluster"
+  type        = bool
+  default     = true
+}
+
 variable "enable_acns_observability" {
   description = "Enable Advanced Container Networking Services (ACNS) with Hubble-compatible observability and flow logs"
   type        = bool

@@ -1,3 +1,10 @@
+# Reference Documentation:
+# - AKS Terraform resource:         https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster
+# - AKS Node Auto-Provisioning:     https://learn.microsoft.com/en-us/azure/aks/node-auto-provisioning
+# - App Routing add-on:             https://learn.microsoft.com/en-us/azure/aks/app-routing
+# - ACNS (Advanced Networking):      https://learn.microsoft.com/en-us/azure/aks/advanced-container-networking-services-overview
+# - Azure CNI Overlay + Cilium:      https://learn.microsoft.com/en-us/azure/aks/azure-cni-overlay
+
 resource "azurerm_resource_group" "main" {
   name     = var.resource_group_name
   location = var.location
@@ -29,7 +36,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     for_each = var.api_server_vnet_integration_enabled ? [1] : []
     content {
       virtual_network_integration_enabled = true
-      subnet_id                = var.api_server_subnet_id
+      subnet_id                           = var.api_server_subnet_id
     }
   }
 
@@ -114,8 +121,11 @@ resource "azurerm_kubernetes_cluster" "main" {
     secret_rotation_interval = "2m"
   }
 
-  web_app_routing {
-    dns_zone_ids = []
+  dynamic "web_app_routing" {
+    for_each = var.enable_app_routing ? [1] : []
+    content {
+      dns_zone_ids = []
+    }
   }
 
   maintenance_window_auto_upgrade {

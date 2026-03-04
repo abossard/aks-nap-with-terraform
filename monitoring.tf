@@ -1,3 +1,10 @@
+# Reference Documentation:
+# - Azure Managed Prometheus:       https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/prometheus-metrics-overview
+# - azurerm_monitor_workspace:      https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_workspace
+# - azurerm_dashboard_grafana:      https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dashboard_grafana
+# - azurerm_monitor_data_collection_rule: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_data_collection_rule
+# - ACNS observability:             https://learn.microsoft.com/en-us/azure/aks/use-advanced-container-networking-services
+
 # Azure Monitor Workspace for Managed Prometheus
 resource "azurerm_monitor_workspace" "prometheus" {
   count               = var.enable_managed_prometheus ? 1 : 0
