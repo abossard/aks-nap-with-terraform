@@ -369,3 +369,14 @@ This repo includes a [`.github/copilot-instructions.md`](.github/copilot-instruc
 - **Copilot in VS Code**: Open any `.tf` file and use inline chat (`Ctrl+I` / `Cmd+I`) for targeted edits
 - **Copilot on GitHub.com**: Use Copilot in pull request reviews to validate Terraform changes
 - The copilot instructions file ensures consistent conventions (naming, tagging, feature toggle patterns) across all AI-assisted edits
+
+### Learn More
+
+| Resource | Link |
+|----------|------|
+| GitHub Copilot Docs | [docs.github.com/en/copilot](https://docs.github.com/en/copilot) |
+| Copilot CLI Docs | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) |
+| Custom Instructions Guide | [docs.github.com/en/copilot/how-tos/configure-custom-instructions](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions) |
+| Copilot Fundamentals (free course) | [learn.microsoft.com/en-us/training/paths/copilot](https://learn.microsoft.com/en-us/training/paths/copilot/) |
+| Copilot CLI Blog Post | [github.blog — Agentic workflows in your terminal](https://github.blog/ai-and-ml/github-copilot/power-agentic-workflows-in-your-terminal-with-github-copilot-cli/) |
+| Agent Skills in VS Code | [code.visualstudio.com/docs/copilot/customization/agent-skills](https://code.visualstudio.com/docs/copilot/customization/agent-skills) |
