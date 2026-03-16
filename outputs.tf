@@ -90,3 +90,13 @@ output "acns_observability_enabled" {
   description = "Whether ACNS (Hubble) observability is enabled"
   value       = var.enable_acns_observability
 }
+
+output "defender_enabled" {
+  description = "Whether Microsoft Defender for Containers is enabled"
+  value       = var.enable_defender
+}
+
+output "diagnostic_settings_enabled" {
+  description = "Whether AKS diagnostic settings (kube-apiserver) are enabled"
+  value       = var.enable_diagnostic_settings
+}

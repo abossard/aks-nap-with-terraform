@@ -71,10 +71,19 @@ graph LR
     O["enable_acns_observability<br/><b>default: true</b>"] --> HB[Hubble Observability]
     O --> NS[Network Security]
 
+    K["enable_keda<br/><b>default: false</b>"] --> KD[KEDA Autoscaler]
+    V["enable_vpa<br/><b>default: false</b>"] --> VP[Vertical Pod Autoscaler]
+    D["enable_defender<br/><b>default: false</b>"] --> DF[Defender for Containers]
+    DS["enable_diagnostic_settings<br/><b>default: false</b>"] --> DG[kube-apiserver Logs]
+
     style P fill:#c8e6c9,stroke:#388e3c
     style G fill:#fff9c4,stroke:#f9a825
     style R fill:#f3e5f5,stroke:#8e24aa
     style O fill:#bbdefb,stroke:#1976d2
+    style K fill:#ffe0b2,stroke:#e65100
+    style V fill:#ffe0b2,stroke:#e65100
+    style D fill:#ffcdd2,stroke:#c62828
+    style DS fill:#e1bee7,stroke:#6a1b9a
 ```
 
 | Variable | Default | What it controls |
@@ -83,22 +92,26 @@ graph LR
 | `enable_managed_grafana` | `false` | Azure Managed Grafana instance + RBAC role assignments (requires Prometheus) |
 | `enable_app_routing` | `true` | Web App Routing add-on (managed NGINX ingress controller) |
 | `enable_acns_observability` | `true` | ACNS `advanced_networking` block: Hubble flow logs + network security (FQDN policies) |
+| `enable_keda` | `false` | KEDA (Kubernetes Event-Driven Autoscaling) on the AKS cluster |
+| `enable_vpa` | `false` | Vertical Pod Autoscaler (VPA) on the AKS cluster |
+| `enable_defender` | `false` | Microsoft Defender for Containers (requires `log_analytics_workspace_id`) |
+| `enable_diagnostic_settings` | `false` | AKS control plane diagnostic logs (kube-apiserver) to Log Analytics (requires `log_analytics_workspace_id`) |
 
 ## Prerequisites
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) >= 2.60
-- AzureRM provider **4.62+** (pinned in `providers.tf`)
+- AzureRM provider **4.64+** (pinned in `providers.tf`)
 - An Azure subscription with permissions to create AKS clusters
 
 ## Project Structure
 
 | File | Purpose |
 |------|---------|
-| `providers.tf` | Terraform & AzureRM provider configuration (v4.62.1) |
+| `providers.tf` | Terraform & AzureRM provider configuration (v4.64.0) |
 | `variables.tf` | Input variables — cluster config, feature toggles, networking |
 | `main.tf` | AKS cluster with NAP, Cilium, ACNS, Prometheus addon |
-| `monitoring.tf` | Monitor Workspace, DCR pipeline, Grafana, Prometheus alerts |
+| `monitoring.tf` | Monitor Workspace, DCR pipeline, Grafana, Prometheus alerts, diagnostic settings |
 | `identity.tf` | Data source for current Azure client config |
 | `outputs.tf` | Cluster endpoints, monitoring IDs, Grafana URL |
 | `terraform.tfvars` | Environment-specific variable overrides |
@@ -124,6 +137,11 @@ enable_managed_prometheus = true   # Monitor Workspace + alerts
 enable_managed_grafana    = false  # Set true for Azure Managed Grafana
 enable_app_routing        = true   # Web App Routing (managed NGINX)
 enable_acns_observability = true   # Hubble + network security
+enable_keda              = false  # KEDA event-driven autoscaling
+enable_vpa               = false  # Vertical Pod Autoscaler
+enable_defender          = false  # Microsoft Defender for Containers
+enable_diagnostic_settings = false # kube-apiserver logs to Log Analytics
+# log_analytics_workspace_id = "/subscriptions/.../workspaces/my-law"  # Required for Defender & diagnostics
 ```
 
 ### 3. Deploy
@@ -148,7 +166,7 @@ kubectl get nodes
 
 ### Design Decisions
 
-1. **Pure `azurerm` provider** — no `azapi` or CLI workarounds. All resources use the stable [AzureRM v4.62](https://github.com/hashicorp/terraform-provider-azurerm/releases) API.
+1. **Pure `azurerm` provider** — no `azapi` or CLI workarounds. All resources use the stable [AzureRM v4.64](https://github.com/hashicorp/terraform-provider-azurerm/releases) API.
 
 2. **Conditional resources via `count`** — every monitoring resource uses `count = var.enable_* ? 1 : 0` so features can be toggled without touching code.
 
@@ -292,6 +310,11 @@ graph LR
 | `enable_managed_grafana` | `bool` | `false` | Enable Azure Managed Grafana |
 | `enable_app_routing` | `bool` | `true` | Enable Web App Routing add-on (managed NGINX) |
 | `enable_acns_observability` | `bool` | `true` | Enable ACNS Hubble + network security |
+| `enable_keda` | `bool` | `false` | Enable KEDA (Kubernetes Event-Driven Autoscaling) |
+| `enable_vpa` | `bool` | `false` | Enable Vertical Pod Autoscaler |
+| `enable_defender` | `bool` | `false` | Enable Microsoft Defender for Containers |
+| `enable_diagnostic_settings` | `bool` | `false` | Enable kube-apiserver diagnostic logs to Log Analytics |
+| `log_analytics_workspace_id` | `string` | `null` | Log Analytics Workspace ID (required for Defender and diagnostic settings) |
 
 ## Outputs
 
@@ -304,6 +327,8 @@ graph LR
 | `grafana_endpoint` | Grafana URL (null if disabled) |
 | `prometheus_rule_group_id` | CPU imbalance alert rule group ID (null if disabled) |
 | `acns_observability_enabled` | Whether ACNS/Hubble is active |
+| `defender_enabled` | Whether Defender for Containers is active |
+| `diagnostic_settings_enabled` | Whether kube-apiserver diagnostic logs are active |
 | `portal_url` | Direct link to AKS in Azure Portal |
 
 ## Tear Down
@@ -319,6 +344,7 @@ terraform destroy
 - [`azurerm_monitor_workspace`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_workspace) — Azure Monitor Workspace for Prometheus
 - [`azurerm_monitor_data_collection_rule`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_data_collection_rule) — DCR for metrics pipeline
 - [`azurerm_monitor_alert_prometheus_rule_group`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_alert_prometheus_rule_group) — Prometheus alert rules
+- [`azurerm_monitor_diagnostic_setting`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_diagnostic_setting) — AKS control plane diagnostic logs
 - [`azurerm_dashboard_grafana`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dashboard_grafana) — Azure Managed Grafana
 
 ### Azure Documentation
@@ -332,6 +358,10 @@ terraform destroy
 - [Node Auto-Provisioning](https://learn.microsoft.com/azure/aks/node-autoprovision)
 - [AKS Workload Identity](https://learn.microsoft.com/azure/aks/workload-identity-overview)
 - [Azure Managed Grafana](https://learn.microsoft.com/azure/managed-grafana/overview)
+- [Microsoft Defender for Containers](https://learn.microsoft.com/azure/defender-for-cloud/defender-for-containers-introduction)
+- [AKS Diagnostic Settings](https://learn.microsoft.com/azure/aks/monitor-aks#collect-resource-logs)
+- [KEDA on AKS](https://learn.microsoft.com/azure/aks/keda-about)
+- [Vertical Pod Autoscaler on AKS](https://learn.microsoft.com/azure/aks/vertical-pod-autoscaler)
 
 ### Community
 - [ACNS Lab Walkthrough](https://azure-samples.github.io/aks-labs/docs/networking/acns-lab/)

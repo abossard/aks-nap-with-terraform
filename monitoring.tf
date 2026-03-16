@@ -4,6 +4,8 @@
 # - azurerm_dashboard_grafana:      https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dashboard_grafana
 # - azurerm_monitor_data_collection_rule: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_data_collection_rule
 # - ACNS observability:             https://learn.microsoft.com/en-us/azure/aks/use-advanced-container-networking-services
+# - AKS Diagnostic Settings:        https://learn.microsoft.com/en-us/azure/aks/monitor-aks#collect-resource-logs
+# - azurerm_monitor_diagnostic_setting: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_diagnostic_setting
 
 # Azure Monitor Workspace for Managed Prometheus
 resource "azurerm_monitor_workspace" "prometheus" {
@@ -162,5 +164,17 @@ resource "azurerm_monitor_alert_prometheus_rule_group" "cpu_imbalance" {
     project     = var.project_name
     environment = var.environment
     managed_by  = "terraform"
+  }
+}
+
+# Diagnostic Settings: AKS control plane logs (kube-apiserver)
+resource "azurerm_monitor_diagnostic_setting" "aks" {
+  count                      = var.enable_diagnostic_settings ? 1 : 0
+  name                       = "${var.project_name}-aks-diagnostics"
+  target_resource_id         = azurerm_kubernetes_cluster.main.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log {
+    category = "kube-apiserver"
   }
 }

@@ -105,8 +105,15 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   workload_autoscaler_profile {
-    keda_enabled                    = false
-    vertical_pod_autoscaler_enabled = false
+    keda_enabled                    = var.enable_keda
+    vertical_pod_autoscaler_enabled = var.enable_vpa
+  }
+
+  dynamic "microsoft_defender" {
+    for_each = var.enable_defender ? [1] : []
+    content {
+      log_analytics_workspace_id = var.log_analytics_workspace_id
+    }
   }
 
   storage_profile {

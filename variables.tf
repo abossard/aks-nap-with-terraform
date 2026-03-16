@@ -92,3 +92,33 @@ variable "enable_acns_observability" {
   type        = bool
   default     = true
 }
+
+variable "enable_keda" {
+  description = "Enable KEDA (Kubernetes Event-Driven Autoscaling) on the AKS cluster"
+  type        = bool
+  default     = false
+}
+
+variable "enable_vpa" {
+  description = "Enable Vertical Pod Autoscaler (VPA) on the AKS cluster"
+  type        = bool
+  default     = false
+}
+
+variable "enable_defender" {
+  description = "Enable Microsoft Defender for Containers on the AKS cluster"
+  type        = bool
+  default     = false
+}
+
+variable "enable_diagnostic_settings" {
+  description = "Enable diagnostic settings for AKS control plane logs (kube-apiserver)"
+  type        = bool
+  default     = false
+}
+
+variable "log_analytics_workspace_id" {
+  description = "Log Analytics Workspace ID for diagnostic settings (required when enable_diagnostic_settings is true)"
+  type        = string
+  default     = null
+}
