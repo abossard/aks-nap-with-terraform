@@ -4,3 +4,4 @@
 .terraform.*.lock
 *.tfstate
 *.tfstate.*
+*tfplan
